@@ -32,6 +32,12 @@ private:
     QString          fileName;
     QFile            *localFile;
     QByteArray       inBlock;
+
+    QLabel           *ipLabel;           // 顯示 "IP" 的標籤
+    QLineEdit        *ipInput;           // 用於輸入 IP 地址
+    QLabel           *portLabel;         // 顯示 "Port" 的標籤
+    QLineEdit        *portInput;         // 用於輸入 Port
+
 };
 
 #endif // TCPFILESERVER_H

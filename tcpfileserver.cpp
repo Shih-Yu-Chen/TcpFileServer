@@ -14,9 +14,22 @@ TcpFileServer::TcpFileServer(QWidget *parent)
     buttonBox->addButton(startButton, QDialogButtonBox::ActionRole);
     buttonBox->addButton(quitButton,QDialogButtonBox::RejectRole);
 
+    ipLabel = new QLabel(tr("IP："));
+    ipInput = new QLineEdit;
+    ipInput->setPlaceholderText(tr("例如：127.0.0.1"));
+    portLabel = new QLabel(tr("Port："));
+    portInput = new QLineEdit;
+    portInput->setPlaceholderText(tr("例如：16998"));
+
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(serverProgressBar);
     mainLayout->addWidget(serverStatusLabel);
+
+    mainLayout->addWidget(ipLabel);
+    mainLayout->addWidget(ipInput);
+    mainLayout->addWidget(portLabel);
+    mainLayout->addWidget(portInput);
+
     mainLayout->addStretch();
     mainLayout->addWidget(buttonBox);
     setLayout(mainLayout);
@@ -34,25 +47,47 @@ TcpFileServer::~TcpFileServer()
 }
 void TcpFileServer::start()
 {
+    // 取得使用者輸入的 IP 和 Port
+    QString ip = ipInput->text();
+    QString portStr = portInput->text();
+
+    if (ip.isEmpty() || portStr.isEmpty()) {
+        QMessageBox::warning(this, QStringLiteral("錯誤"), QStringLiteral("請輸入 IP 和 Port！"));
+        startButton->setEnabled(true);
+        return;
+    }
+
+    bool isPortValid;
+    quint16 port = portStr.toUShort(&isPortValid);
+    if (!isPortValid || port == 0) {
+        QMessageBox::warning(this, QStringLiteral("錯誤"), QStringLiteral("Port 無效！請輸入有效的 Port（1-65535）。"));
+        startButton->setEnabled(true);
+        return;
+    }
+
+    // 重設狀態
     startButton->setEnabled(false);
     byteReceived = 0;
     fileNameSize = 0;
-    while(!tcpServer.isListening() &&
-          !tcpServer.listen(QHostAddress::AnyIPv4, 16998))
-    {
-        QMessageBox::StandardButton ret = QMessageBox::critical(this,
-                                                                QStringLiteral("迴圈"),
-                                                                QStringLiteral("無法啟動伺服器: %1.").arg(tcpServer.errorString()),
-                                                                QMessageBox::Retry | QMessageBox::Cancel);
-        if (ret == QMessageBox::Cancel)
 
-        {
+    // 監聽特定 IP 和 Port，並提供重試選項
+    while (!tcpServer.isListening() && !tcpServer.listen(QHostAddress(ip), port)) {
+        QMessageBox::StandardButton ret = QMessageBox::critical(
+            this,
+            QStringLiteral("錯誤"),
+            QStringLiteral("無法啟動伺服器：%1").arg(tcpServer.errorString()),
+            QMessageBox::Retry | QMessageBox::Cancel);
+
+        if (ret == QMessageBox::Cancel) {
             startButton->setEnabled(true);
             return;
         }
     }
-    serverStatusLabel->setText(QStringLiteral("監聽中..."));
+
+    // 成功啟動伺服器
+    serverStatusLabel->setText(QStringLiteral("伺服器正在監聽 %1:%2").arg(ip).arg(port));
 }
+
 
 void TcpFileServer::acceptConnection()
 {
